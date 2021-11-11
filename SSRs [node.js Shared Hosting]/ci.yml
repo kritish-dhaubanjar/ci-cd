@@ -1,0 +1,93 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  ci:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [14]
+
+    steps:
+      - name: Checkout 🛎
+        uses: actions/checkout@master
+
+      - name: Setup node env 🏗
+        uses: actions/setup-node@v2.1.5
+        with:
+          node-version: ${{ matrix.node }}
+          check-latest: true
+
+      - name: Get yarn cache directory path 🛠
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - name: Cache node_modules 📦
+        uses: actions/cache@v2.1.4
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies 👨🏻‍💻
+        run: yarn
+
+      - name: .env
+        run: |
+          rm .env
+          echo "API_URL=$API_URL" >> .env
+          echo "KHALTI_PUBLIC_KEY=$KHALTI_PUBLIC_KEY" >> .env
+        env:
+          API_URL: ${{secrets.API_URL}}
+          KHALTI_PUBLIC_KEY: ${{secrets.KHALTI_PUBLIC_KEY}}
+
+      - name: Build
+        run: yarn build
+
+      - name: Zip .nuxt
+        run: zip -r nuxt.zip .nuxt
+
+      - name: Zip public
+        run: mv static public && zip -r public.zip public
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/deploy.key
+          chmod 600 ~/.ssh/deploy.key
+          cat >>~/.ssh/config <<END
+          Host deploy
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/deploy.key
+            IdentitiesOnly yes
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+
+      - name: rm -r /home/nepawlco/nepawl/.nuxt && rm -r /home/nepawlco/nepawl/public
+        run: ssh deploy "rm -r /home/nepawlco/nepawl/.nuxt && rm -r /home/nepawlco/nepawl/public"
+
+      - name: SCP nuxt.zip && public.zip
+        run: scp nuxt.zip deploy:/home/nepawlco/nepawl/ && scp public.zip deploy:/home/nepawlco/nepawl/
+
+      - name: unzip *.zip && rm *.zip
+        run: ssh deploy "cd /home/nepawlco/nepawl/ && unzip nuxt.zip && rm nuxt.zip && unzip public.zip && rm public.zip"
+
+      - name: SCP package.json && yarn.lock
+        run: scp package.json deploy:/home/nepawlco/nepawl/ && scp yarn.lock deploy:/home/nepawlco/nepawl/
+
+      - name: yarn
+        run: ssh deploy "source /home/nepawlco/nodevenv/nepawl/14/bin/activate && cd /home/nepawlco/nepawl && yarn"

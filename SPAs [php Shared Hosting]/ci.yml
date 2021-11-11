@@ -5,9 +5,9 @@ name: Node.js CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
   build:
@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
-      - run: npm run build
+      - run: npm run generate
 
       # Step 2:
       - name: Generate dist.zip
@@ -52,8 +52,8 @@ jobs:
 
       # Step 4:
       - name: SCP dist.zip
-        run: scp dist.zip deploy:/home/blsonepa/deployment_utility/
+        run: scp dist.zip deploy:/home/blsonepa/deployment_utility/Krisht-Trading
 
       # Step 5:
-      - name: Copy to /home/blsonepa/deployment_utility && ./MyuNepalNuxtDeploy.sh && ./discord_bot_message_script.sh
-        run: ssh deploy "cd /home/blsonepa/deployment_utility && ./MyuNepalNuxtDeploy.sh && ./discord_bot_message_script.sh '' 'MyuNepal Nuxt Deployed to server sucessfully!' ''"
+      - name: CD to /home/blsonepa/deployment_utility/Krisht-Trading && ./MyuNepalNuxtDeploy.sh && ./discord_bot_message_script.sh
+        run: ssh deploy "cd /home/blsonepa/deployment_utility/Krisht-Trading && ./Krisht-TradingNuxtDeploy.sh && ./discord_bot_message_script.sh '' 'Krisht-Trading Nuxt Deployed to server sucessfully!' ''"
