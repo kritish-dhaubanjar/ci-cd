@@ -91,3 +91,6 @@ jobs:
 
       - name: yarn
         run: ssh deploy "source /home/nepawlco/nodevenv/nepawl/14/bin/activate && cd /home/nepawlco/nepawl && yarn"
+        
+      - name: Restart CloudLinux Node.JS application
+        run: ssh deploy "cloudlinux-selector restart --json --interpreter nodejs --user nepawlco --app-root /home/nepawlco/nepawl/"
